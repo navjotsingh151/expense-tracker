@@ -12,6 +12,7 @@ import streamlit as st
 from dotenv import load_dotenv
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaIoBaseUpload
 
 # Load variables defined in a local .env if present so users do not need to
@@ -65,9 +66,23 @@ def upload_file(file, filename: str, folder_id: Optional[str] = None) -> Optiona
     if folder_id:
         file_metadata["parents"] = [folder_id]
     media = MediaIoBaseUpload(io.BytesIO(file.getvalue()), mimetype=file.type)
-    uploaded = (
-        service.files()
-        .create(body=file_metadata, media_body=media, fields="id")
-        .execute()
-    )
+
+    try:
+        uploaded = (
+            service.files()
+            .create(body=file_metadata, media_body=media, fields="id")
+            .execute()
+        )
+    except HttpError as exc:  # pragma: no cover - network errors are not deterministic
+        # Common 403 occurs when the service account is not part of a Shared Drive
+        # and therefore has no available storage quota.
+        if exc.resp.status == 403 and b"storageQuotaExceeded" in exc.content:
+            st.error(
+                "Service account lacks Drive storage. Add it to a Shared Drive or "
+                "use delegated OAuth credentials."
+            )
+        else:
+            st.error(f"Failed to upload receipt: {exc}")
+        return None
+
     return uploaded.get("id")

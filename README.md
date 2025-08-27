@@ -21,5 +21,6 @@ A modular Streamlit application for tracking expenses.
 4. To enable Google Drive uploads, set the `GOOGLE_SERVICE_ACCOUNT_JSON`
    environment variable to either the JSON string of your service account
    credentials or a path to the `.json` file. A `.env` file is loaded
-   automatically.
+   automatically. Service accounts do not have personal Drive storage;
+   add the account to a Shared Drive or use delegated OAuth for uploads.
 
