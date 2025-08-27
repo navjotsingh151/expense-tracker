@@ -11,7 +11,7 @@ A modular Streamlit application for tracking expenses.
 ## Running the App
 1. Install dependencies:
    ```bash
-   pip install streamlit pandas altair google-auth google-api-python-client
+   pip install -r requirements.txt
    ```
 2. Start the application:
    ```bash
