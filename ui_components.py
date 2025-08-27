@@ -12,6 +12,13 @@ import db_operations
 import google_drive_upload
 
 
+def _rerun() -> None:
+    """Rerun the Streamlit app supporting legacy and new APIs."""
+    if hasattr(st, "rerun"):
+        st.rerun()
+    else:  # pragma: no cover - legacy fallback
+        st.experimental_rerun()
+
 def render_month_tiles(conn) -> Optional[str]:
     """Render scrollable month tiles and return the selected month."""
     months_df = db_operations.get_month_totals(conn)
@@ -44,7 +51,7 @@ def add_expense_form(conn) -> None:
     """Render a form for adding a new expense."""
     st.subheader("Add Expense")
     with st.form("expense_form", clear_on_submit=True):
-        amount = st.number_input("Amount", min_value=0.0, format="%.2f")
+        amount = st.number_input("Amount", min_value=0.0, step=0.01)
         categories = db_operations.get_categories(conn)
         category = st.selectbox("Category", categories)
         new_category = st.text_input("New Category (uppercase)")
@@ -55,7 +62,7 @@ def add_expense_form(conn) -> None:
                 st.success("Category added.")
             else:
                 st.warning("Category already exists.")
-            st.experimental_rerun()
+            _rerun()
         date = st.date_input("Date of expense", dt.date.today())
         receipt = st.file_uploader(
             "Upload receipt", type=["png", "jpg", "jpeg", "pdf"]
@@ -69,10 +76,10 @@ def add_expense_form(conn) -> None:
             db_operations.add_expense(conn, amount, category, date, receipt_id)
             st.success("Expense added.")
             st.session_state["show_add_expense"] = False
-            st.experimental_rerun()
+            _rerun()
         elif cancel:
             st.session_state["show_add_expense"] = False
-            st.experimental_rerun()
+            _rerun()
 
 
 def render_expense_table(df: pd.DataFrame) -> None:
