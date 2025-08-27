@@ -19,14 +19,15 @@ def plot_month_bar_chart(df: pd.DataFrame) -> None:
         st.info("No expenses for this month.")
         return
     df = df.copy()
-    df["date"] = pd.to_datetime(df["date"])
+    df["date"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%d")
     chart = (
         alt.Chart(df)
         .mark_bar()
         .encode(
-            x=alt.X("date:T", title="Date"),
+            x=alt.X("date:O", title="Date"),
             y=alt.Y("amount:Q", title="Amount"),
             color=alt.Color("category:N", title="Category"),
+            xOffset="category:N",
         )
         .properties(height=400)
     )

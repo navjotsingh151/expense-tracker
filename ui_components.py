@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import re
 from typing import Optional
 
 import pandas as pd
@@ -51,7 +52,9 @@ def add_expense_form(conn) -> None:
     """Render a form for adding a new expense."""
     st.subheader("Add Expense")
     with st.form("expense_form", clear_on_submit=True):
-        amount_str: str = st.text_input("Amount", value="", placeholder="Enter amount")
+        amount_str: str = st.text_input(
+            "Amount", value="", placeholder="Enter amount", key="amount_input"
+        )
         categories = db_operations.get_categories(conn)
         category = st.selectbox("Category", categories)
         new_category = st.text_input("New Category (uppercase)")
@@ -71,7 +74,8 @@ def add_expense_form(conn) -> None:
         cancel = st.form_submit_button("Cancel")
         if submitted:
             try:
-                amount = float(amount_str)
+                cleaned = re.sub(r"[^0-9.]", "", amount_str)
+                amount = float(cleaned)
                 if amount <= 0:
                     raise ValueError
             except ValueError:
@@ -96,6 +100,18 @@ def render_expense_table(df: pd.DataFrame) -> None:
         return
     df_display = df.copy()
     df_display["date"] = pd.to_datetime(df_display["date"]).dt.strftime("%Y-%m-%d")
-    st.markdown(df_display.to_html(index=False), unsafe_allow_html=True)
+    st.markdown(
+        """
+        <style>
+        table.expense-table {width: 100%; border-collapse: collapse;}
+        table.expense-table th {background-color: #f0f2f6; text-align: left;}
+        table.expense-table td, table.expense-table th {border: 1px solid #ddd; padding: 4px 8px;}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        df_display.to_html(index=False, classes="expense-table"), unsafe_allow_html=True
+    )
     total = df_display["amount"].sum()
     st.markdown(f"**Total: ${total:.2f}**")
