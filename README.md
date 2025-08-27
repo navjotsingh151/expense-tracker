@@ -1,1 +1,22 @@
-# expense-tracker
+# Expense Tracker
+
+A modular Streamlit application for tracking expenses.
+
+## Features
+- Scrollable month tiles showing total expenses per month.
+- Dynamic bar chart grouped by expense category.
+- Add Expense form with Google Drive receipt upload.
+- SQLite database backend.
+
+## Running the App
+1. Install dependencies:
+   ```bash
+   pip install streamlit pandas altair google-auth google-api-python-client
+   ```
+2. Start the application:
+   ```bash
+   streamlit run main.py
+   ```
+3. By default, data is stored in `expenses.db` in the project root.
+4. To enable Google Drive uploads, set the `GOOGLE_SERVICE_ACCOUNT_JSON` environment variable to your service account credentials JSON string.
+
