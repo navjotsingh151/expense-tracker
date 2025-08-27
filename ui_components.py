@@ -51,7 +51,7 @@ def add_expense_form(conn) -> None:
     """Render a form for adding a new expense."""
     st.subheader("Add Expense")
     with st.form("expense_form", clear_on_submit=True):
-        amount = st.number_input("Amount", min_value=0.0, step=0.01)
+        amount_str: str = st.text_input("Amount", value="", placeholder="Enter amount")
         categories = db_operations.get_categories(conn)
         category = st.selectbox("Category", categories)
         new_category = st.text_input("New Category (uppercase)")
@@ -70,13 +70,20 @@ def add_expense_form(conn) -> None:
         submitted = st.form_submit_button("Save Expense")
         cancel = st.form_submit_button("Cancel")
         if submitted:
-            receipt_id = None
-            if receipt is not None:
-                receipt_id = google_drive_upload.upload_file(receipt, receipt.name)
-            db_operations.add_expense(conn, amount, category, date, receipt_id)
-            st.success("Expense added.")
-            st.session_state["show_add_expense"] = False
-            _rerun()
+            try:
+                amount = float(amount_str)
+                if amount <= 0:
+                    raise ValueError
+            except ValueError:
+                st.error("Please enter a valid amount greater than 0.")
+            else:
+                receipt_id = None
+                if receipt is not None:
+                    receipt_id = google_drive_upload.upload_file(receipt, receipt.name)
+                db_operations.add_expense(conn, amount, category, date, receipt_id)
+                st.success("Expense added.")
+                st.session_state["show_add_expense"] = False
+                _rerun()
         elif cancel:
             st.session_state["show_add_expense"] = False
             _rerun()
