@@ -5,12 +5,18 @@ from __future__ import annotations
 import io
 import json
 import os
+from pathlib import Path
 from typing import Optional
 
 import streamlit as st
+from dotenv import load_dotenv
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
+
+# Load variables defined in a local .env if present so users do not need to
+# export them manually.
+load_dotenv()
 
 
 def upload_file(file, filename: str, folder_id: Optional[str] = None) -> Optional[str]:
@@ -30,12 +36,29 @@ def upload_file(file, filename: str, folder_id: Optional[str] = None) -> Optiona
     Optional[str]
         The Google Drive file ID if upload succeeds, otherwise ``None``.
     """
-    creds_json = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
-    if not creds_json:
+    raw_creds = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
+    if not raw_creds:
         st.error("Google Drive credentials not provided.")
         return None
+
+    # ``GOOGLE_SERVICE_ACCOUNT_JSON`` can either contain a JSON string or a path
+    # to a JSON file. Handle both for convenience.
+    creds_dict: dict
+    if Path(str(raw_creds)).is_file():
+        try:
+            creds_dict = json.loads(Path(str(raw_creds)).read_text())
+        except OSError:
+            st.error("Could not read Google Drive credentials file.")
+            return None
+    else:
+        try:
+            creds_dict = json.loads(raw_creds)
+        except json.JSONDecodeError:
+            st.error("Invalid Google Drive credentials JSON.")
+            return None
+
     creds = Credentials.from_service_account_info(
-        json.loads(creds_json), scopes=["https://www.googleapis.com/auth/drive.file"]
+        creds_dict, scopes=["https://www.googleapis.com/auth/drive.file"]
     )
     service = build("drive", "v3", credentials=creds)
     file_metadata = {"name": filename}

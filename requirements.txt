@@ -3,4 +3,5 @@ pandas
 altair
 google-auth
 google-api-python-client
+python-dotenv
 pytest

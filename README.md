@@ -18,5 +18,8 @@ A modular Streamlit application for tracking expenses.
    streamlit run main.py
    ```
 3. By default, data is stored in `expenses.db` in the project root.
-4. To enable Google Drive uploads, set the `GOOGLE_SERVICE_ACCOUNT_JSON` environment variable to your service account credentials JSON string.
+4. To enable Google Drive uploads, set the `GOOGLE_SERVICE_ACCOUNT_JSON`
+   environment variable to either the JSON string of your service account
+   credentials or a path to the `.json` file. A `.env` file is loaded
+   automatically.
 
