@@ -48,7 +48,7 @@ def render_month_tiles(conn) -> Optional[str]:
     cols = st.columns(len(months) if months else 1)
     for i, (month, total) in enumerate(zip(months, totals)):
         with cols[i]:
-            label = f"{month}\n${total:.2f}"
+            label = f"${total:.2f}\n{month}"
             if st.button(label, key=f"month_{month}"):
                 st.session_state["selected_month"] = month
     return st.session_state.get("selected_month")
