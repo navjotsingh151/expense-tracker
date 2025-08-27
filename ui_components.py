@@ -13,6 +13,12 @@ import db_operations
 import google_drive_upload
 
 
+def _debug(msg: str) -> None:
+    """Print and display a debug message."""
+    print(msg)
+    st.write(msg)
+
+
 def _rerun() -> None:
     """Rerun the Streamlit app supporting legacy and new APIs."""
     if hasattr(st, "rerun"):
@@ -73,7 +79,7 @@ def add_expense_form(conn) -> None:
         submitted = st.form_submit_button("Save Expense")
         cancel = st.form_submit_button("Cancel")
         if submitted:
-            st.write("DEBUG: Save Expense clicked")
+            _debug("DEBUG: Save Expense clicked")
             try:
                 cleaned = re.sub(r"[^0-9.]", "", amount_str)
                 amount = float(cleaned)
@@ -84,11 +90,11 @@ def add_expense_form(conn) -> None:
             else:
                 receipt_url = None
                 if receipt is not None:
-                    st.write(f"DEBUG: Uploading receipt {receipt.name}")
+                    _debug(f"DEBUG: Uploading receipt {receipt.name}")
                     receipt_url = google_drive_upload.upload_file(receipt, receipt.name)
-                    st.write(f"DEBUG: Receipt URL returned: {receipt_url}")
+                    _debug(f"DEBUG: Receipt URL returned: {receipt_url}")
                 db_operations.add_expense(conn, amount, category, date, receipt_url)
-                st.write("DEBUG: Expense saved to database")
+                _debug("DEBUG: Expense saved to database")
                 st.success("Expense added.")
                 st.session_state["show_add_expense"] = False
                 _rerun()
