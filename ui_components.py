@@ -73,6 +73,7 @@ def add_expense_form(conn) -> None:
         submitted = st.form_submit_button("Save Expense")
         cancel = st.form_submit_button("Cancel")
         if submitted:
+            st.write("DEBUG: Save Expense clicked")
             try:
                 cleaned = re.sub(r"[^0-9.]", "", amount_str)
                 amount = float(cleaned)
@@ -83,8 +84,11 @@ def add_expense_form(conn) -> None:
             else:
                 receipt_url = None
                 if receipt is not None:
+                    st.write(f"DEBUG: Uploading receipt {receipt.name}")
                     receipt_url = google_drive_upload.upload_file(receipt, receipt.name)
+                    st.write(f"DEBUG: Receipt URL returned: {receipt_url}")
                 db_operations.add_expense(conn, amount, category, date, receipt_url)
+                st.write("DEBUG: Expense saved to database")
                 st.success("Expense added.")
                 st.session_state["show_add_expense"] = False
                 _rerun()
