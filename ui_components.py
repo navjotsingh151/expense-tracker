@@ -41,34 +41,38 @@ def render_month_tiles(conn) -> Optional[str]:
 
 
 def add_expense_form(conn) -> None:
-    """Render a modal form for adding a new expense."""
-    with st.modal("Add Expense"):
-        with st.form("expense_form", clear_on_submit=True):
-            amount = st.number_input("Amount", min_value=0.0, format="%.2f")
-            categories = db_operations.get_categories(conn)
-            category = st.selectbox("Category", categories)
-            new_category = st.text_input("New Category (uppercase)")
-            add_cat = st.form_submit_button("Add Category")
-            if add_cat and new_category:
-                added = db_operations.add_category(conn, new_category.strip().upper())
-                if added:
-                    st.success("Category added.")
-                else:
-                    st.warning("Category already exists.")
-                st.experimental_rerun()
-            date = st.date_input("Date of expense", dt.date.today())
-            receipt = st.file_uploader(
-                "Upload receipt", type=["png", "jpg", "jpeg", "pdf"]
-            )
-            submitted = st.form_submit_button("Save Expense")
-            if submitted:
-                receipt_id = None
-                if receipt is not None:
-                    receipt_id = google_drive_upload.upload_file(receipt, receipt.name)
-                db_operations.add_expense(conn, amount, category, date, receipt_id)
-                st.success("Expense added.")
-                st.session_state["show_add_expense"] = False
-                st.experimental_rerun()
+    """Render a form for adding a new expense."""
+    st.subheader("Add Expense")
+    with st.form("expense_form", clear_on_submit=True):
+        amount = st.number_input("Amount", min_value=0.0, format="%.2f")
+        categories = db_operations.get_categories(conn)
+        category = st.selectbox("Category", categories)
+        new_category = st.text_input("New Category (uppercase)")
+        add_cat = st.form_submit_button("Add Category")
+        if add_cat and new_category:
+            added = db_operations.add_category(conn, new_category.strip().upper())
+            if added:
+                st.success("Category added.")
+            else:
+                st.warning("Category already exists.")
+            st.experimental_rerun()
+        date = st.date_input("Date of expense", dt.date.today())
+        receipt = st.file_uploader(
+            "Upload receipt", type=["png", "jpg", "jpeg", "pdf"]
+        )
+        submitted = st.form_submit_button("Save Expense")
+        cancel = st.form_submit_button("Cancel")
+        if submitted:
+            receipt_id = None
+            if receipt is not None:
+                receipt_id = google_drive_upload.upload_file(receipt, receipt.name)
+            db_operations.add_expense(conn, amount, category, date, receipt_id)
+            st.success("Expense added.")
+            st.session_state["show_add_expense"] = False
+            st.experimental_rerun()
+        elif cancel:
+            st.session_state["show_add_expense"] = False
+            st.experimental_rerun()
 
 
 def render_expense_table(df: pd.DataFrame) -> None:
