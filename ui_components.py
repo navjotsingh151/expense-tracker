@@ -81,10 +81,10 @@ def add_expense_form(conn) -> None:
             except ValueError:
                 st.error("Please enter a valid amount greater than 0.")
             else:
-                receipt_id = None
+                receipt_url = None
                 if receipt is not None:
-                    receipt_id = google_drive_upload.upload_file(receipt, receipt.name)
-                db_operations.add_expense(conn, amount, category, date, receipt_id)
+                    receipt_url = google_drive_upload.upload_file(receipt, receipt.name)
+                db_operations.add_expense(conn, amount, category, date, receipt_url)
                 st.success("Expense added.")
                 st.session_state["show_add_expense"] = False
                 _rerun()

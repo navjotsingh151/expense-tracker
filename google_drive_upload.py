@@ -30,12 +30,14 @@ def upload_file(file, filename: str, folder_id: Optional[str] = None) -> Optiona
     filename: str
         Desired file name on Google Drive.
     folder_id: Optional[str]
-        Destination folder ID if uploading to a specific folder.
+        Destination folder ID if uploading to a specific folder. If not provided,
+        the ``GOOGLE_DRIVE_FOLDER_ID`` environment variable will be used when
+        available.
 
     Returns
     -------
     Optional[str]
-        The Google Drive file ID if upload succeeds, otherwise ``None``.
+        A shareable Drive URL if upload succeeds, otherwise ``None``.
     """
     raw_creds = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
     if not raw_creds:
@@ -62,6 +64,8 @@ def upload_file(file, filename: str, folder_id: Optional[str] = None) -> Optiona
         creds_dict, scopes=["https://www.googleapis.com/auth/drive.file"]
     )
     service = build("drive", "v3", credentials=creds)
+    if folder_id is None:
+        folder_id = os.getenv("GOOGLE_DRIVE_FOLDER_ID")
     file_metadata = {"name": filename}
     if folder_id:
         file_metadata["parents"] = [folder_id]
@@ -70,7 +74,12 @@ def upload_file(file, filename: str, folder_id: Optional[str] = None) -> Optiona
     try:
         uploaded = (
             service.files()
-            .create(body=file_metadata, media_body=media, fields="id")
+            .create(
+                body=file_metadata,
+                media_body=media,
+                fields="id, webViewLink",
+                supportsAllDrives=True,
+            )
             .execute()
         )
     except HttpError as exc:  # pragma: no cover - network errors are not deterministic
@@ -85,4 +94,4 @@ def upload_file(file, filename: str, folder_id: Optional[str] = None) -> Optiona
             st.error(f"Failed to upload receipt: {exc}")
         return None
 
-    return uploaded.get("id")
+    return uploaded.get("webViewLink")

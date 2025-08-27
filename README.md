@@ -23,4 +23,7 @@ A modular Streamlit application for tracking expenses.
    credentials or a path to the `.json` file. A `.env` file is loaded
    automatically. Service accounts do not have personal Drive storage;
    add the account to a Shared Drive or use delegated OAuth for uploads.
+5. Optionally, set `GOOGLE_DRIVE_FOLDER_ID` to the folder where receipts
+   should be saved. The upload helper returns a shareable link that is stored
+   alongside each expense.
 
