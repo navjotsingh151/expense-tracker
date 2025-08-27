@@ -6,11 +6,14 @@ import io
 import json
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any
 
 import streamlit as st
 from dotenv import load_dotenv
-from google.oauth2.service_account import Credentials
+from google.oauth2.credentials import Credentials as UserCreds
+from google.oauth2.service_account import Credentials as ServiceCreds
+from google.auth.transport.requests import Request
+from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaIoBaseUpload
@@ -26,8 +29,71 @@ def _debug(msg: str) -> None:
     st.write(msg)
 
 
+def _build_drive_service() -> Optional[Any]:
+    """Create a Google Drive service using either OAuth or service account creds.
+
+    Returns
+    -------
+    Optional[Resource]
+        Drive API service resource or ``None`` if credentials are missing.
+    """
+    # If OAuth client details are provided, prefer them so users with personal
+    # Drives can authorize the upload.
+    oauth_raw = os.getenv("GOOGLE_OAUTH_CLIENT_JSON")
+    scopes = ["https://www.googleapis.com/auth/drive.file"]
+    if oauth_raw:
+        _debug("DEBUG: Using OAuth client credentials")
+        token_path = os.getenv("GOOGLE_OAUTH_TOKEN_JSON", "gdrive_token.json")
+        creds: Optional[UserCreds] = None
+        if Path(token_path).exists():
+            _debug(f"DEBUG: Loading OAuth token from {token_path}")
+            creds = UserCreds.from_authorized_user_file(token_path, scopes)
+        if not creds or not creds.valid:
+            if creds and creds.expired and creds.refresh_token:
+                _debug("DEBUG: Refreshing expired OAuth token")
+                creds.refresh(Request())
+            else:
+                if Path(oauth_raw).is_file():
+                    flow = InstalledAppFlow.from_client_secrets_file(oauth_raw, scopes)
+                else:
+                    flow = InstalledAppFlow.from_client_config(
+                        json.loads(oauth_raw), scopes
+                    )
+                creds = flow.run_local_server(port=0)
+                Path(token_path).write_text(creds.to_json())
+        return build("drive", "v3", credentials=creds)
+
+    # Fallback to service account credentials.
+    raw_service = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
+    if not raw_service:
+        print("ERROR: Google Drive credentials not provided.")
+        st.error("Google Drive credentials not provided.")
+        return None
+    _debug("DEBUG: Loaded GOOGLE_SERVICE_ACCOUNT_JSON from environment")
+
+    if Path(str(raw_service)).is_file():
+        _debug(f"DEBUG: Treating credentials as file path: {raw_service}")
+        try:
+            creds_dict = json.loads(Path(str(raw_service)).read_text())
+        except OSError:
+            print("ERROR: Could not read Google Drive credentials file.")
+            st.error("Could not read Google Drive credentials file.")
+            return None
+    else:
+        _debug("DEBUG: Parsing credentials as JSON string")
+        try:
+            creds_dict = json.loads(raw_service)
+        except json.JSONDecodeError:
+            print("ERROR: Invalid Google Drive credentials JSON.")
+            st.error("Invalid Google Drive credentials JSON.")
+            return None
+
+    creds = ServiceCreds.from_service_account_info(creds_dict, scopes=scopes)
+    return build("drive", "v3", credentials=creds)
+
+
 def upload_file(file, filename: str, folder_id: Optional[str] = None) -> Optional[str]:
-    """Upload a file to Google Drive using service account credentials.
+    """Upload a file to Google Drive using available credentials.
 
     Parameters
     ----------
@@ -46,38 +112,9 @@ def upload_file(file, filename: str, folder_id: Optional[str] = None) -> Optiona
         A shareable Drive URL if upload succeeds, otherwise ``None``.
     """
     _debug(f"DEBUG: Starting upload of {filename}")
-    raw_creds = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
-    if not raw_creds:
-        print("ERROR: Google Drive credentials not provided.")
-        st.error("Google Drive credentials not provided.")
+    service = _build_drive_service()
+    if service is None:
         return None
-    _debug("DEBUG: Loaded GOOGLE_SERVICE_ACCOUNT_JSON from environment")
-
-    # ``GOOGLE_SERVICE_ACCOUNT_JSON`` can either contain a JSON string or a path
-    # to a JSON file. Handle both for convenience.
-    creds_dict: dict
-    if Path(str(raw_creds)).is_file():
-        _debug(f"DEBUG: Treating credentials as file path: {raw_creds}")
-        try:
-            creds_dict = json.loads(Path(str(raw_creds)).read_text())
-        except OSError:
-            print("ERROR: Could not read Google Drive credentials file.")
-            st.error("Could not read Google Drive credentials file.")
-            return None
-    else:
-        _debug("DEBUG: Parsing credentials as JSON string")
-        try:
-            creds_dict = json.loads(raw_creds)
-        except json.JSONDecodeError:
-            print("ERROR: Invalid Google Drive credentials JSON.")
-            st.error("Invalid Google Drive credentials JSON.")
-            return None
-
-    _debug("DEBUG: Building Drive service client")
-    creds = Credentials.from_service_account_info(
-        creds_dict, scopes=["https://www.googleapis.com/auth/drive.file"]
-    )
-    service = build("drive", "v3", credentials=creds)
 
     if folder_id is None:
         folder_id = os.getenv("GOOGLE_DRIVE_FOLDER_ID")
