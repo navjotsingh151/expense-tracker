@@ -59,7 +59,16 @@ def _build_drive_service() -> Optional[Any]:
                     flow = InstalledAppFlow.from_client_config(
                         json.loads(oauth_raw), scopes
                     )
-                creds = flow.run_local_server(port=0)
+                try:
+                    creds = flow.run_local_server(port=0)
+                except Exception as exc:  # pragma: no cover - network/browser errors
+                    _debug(f"DEBUG: OAuth authorization failed: {exc}")
+                    st.error(
+                        "OAuth authorization failed. Ensure the OAuth client is"
+                        " configured as a Desktop app with a http://localhost"
+                        " redirect URI."
+                    )
+                    return None
                 Path(token_path).write_text(creds.to_json())
         return build("drive", "v3", credentials=creds)
 
