@@ -1,145 +1,137 @@
-"""Database operations for the Streamlit Expense Tracker app."""
+"""Database operations for the Streamlit Expense Tracker app using Supabase."""
 
 from __future__ import annotations
 
-import sqlite3
+import os
 from datetime import datetime, date
 from typing import List, Optional
 
 import pandas as pd
+from supabase import Client, create_client
 
 
-def get_connection(db_path: str = "expenses.db") -> sqlite3.Connection:
-    """Return a connection to the SQLite database.
-
-    Parameters
-    ----------
-    db_path: str
-        Path to the SQLite database file.
-    """
-    conn = sqlite3.connect(db_path, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-
-def init_db(conn: sqlite3.Connection) -> None:
-    """Create necessary tables if they do not exist."""
-    cur = conn.cursor()
-    cur.execute(
-        """
-        CREATE TABLE IF NOT EXISTS categories (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT UNIQUE NOT NULL
-        )
-        """
-    )
-    cur.execute(
-        """
-        CREATE TABLE IF NOT EXISTS expenses (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            amount REAL NOT NULL,
-            category_id INTEGER NOT NULL,
-            date TEXT NOT NULL,
-            receipt_url TEXT,
-            FOREIGN KEY (category_id) REFERENCES categories (id)
-        )
-        """
-    )
-    conn.commit()
-
-
-def add_category(conn: sqlite3.Connection, name: str) -> bool:
-    """Insert a new category in uppercase if it does not already exist.
+def get_connection(url: str | None = None, key: str | None = None) -> Client:
+    """Return a Supabase client.
 
     Parameters
     ----------
-    conn: sqlite3.Connection
-        Active database connection.
-    name: str
-        Category name to add. It will be stored in uppercase.
-
-    Returns
-    -------
-    bool
-        True if the category was inserted, False if it already existed.
+    url: str | None
+        Supabase project URL. If not provided, the environment variable
+        ``SUPABASE_URL`` is used.
+    key: str | None
+        Supabase API key. If not provided, the environment variable
+        ``SUPABASE_KEY`` is used.
     """
+    url = url or os.getenv("SUPABASE_URL")
+    key = key or os.getenv("SUPABASE_KEY")
+    if not url or not key:
+        raise ValueError("Supabase credentials not provided")
+    return create_client(url, key)
+
+
+def init_db(conn: Client) -> None:
+    """Ensure required tables are available in Supabase.
+
+    Supabase tables are typically managed outside the application. This
+    function performs a lightweight check so the rest of the code can assume
+    the tables exist.
+    """
+
+    for table in ("categories", "expenses"):
+        try:
+            conn.table(table).select("id").limit(1).execute()
+        except Exception:
+            # If the table does not exist or cannot be queried, ignore the
+            # error and allow Supabase to surface it later during operations.
+            pass
+
+
+def add_category(conn: Client, name: str) -> bool:
+    """Insert a new category in uppercase if it does not already exist."""
+
     name = name.upper()
-    cur = conn.cursor()
     try:
-        cur.execute("INSERT INTO categories (name) VALUES (?)", (name,))
-        conn.commit()
+        conn.table("categories").insert({"name": name}).execute()
         return True
-    except sqlite3.IntegrityError:
+    except Exception:
+        # A uniqueness violation (or any other error) results in False to
+        # mirror the previous behaviour.
         return False
 
 
-def get_categories(conn: sqlite3.Connection) -> List[str]:
+def get_categories(conn: Client) -> List[str]:
     """Return a list of existing categories sorted alphabetically."""
-    cur = conn.cursor()
-    cur.execute("SELECT name FROM categories ORDER BY name")
-    rows = cur.fetchall()
-    return [row["name"] for row in rows]
+
+    resp = conn.table("categories").select("name").order("name").execute()
+    return [row["name"] for row in resp.data or []]
 
 
 def add_expense(
-    conn: sqlite3.Connection,
+    conn: Client,
     amount: float,
     category: str,
     expense_date: date,
     receipt_url: Optional[str],
 ) -> None:
     """Insert a new expense into the database."""
-    cur = conn.cursor()
-    cur.execute("SELECT id FROM categories WHERE name = ?", (category,))
-    result = cur.fetchone()
-    if result is None:
+
+    result = (
+        conn.table("categories")
+        .select("id")
+        .eq("name", category.upper())
+        .single()
+        .execute()
+    )
+    if not result.data:
         raise ValueError("Category does not exist.")
-    category_id = result["id"]
-    cur.execute(
-        """
-        INSERT INTO expenses (amount, category_id, date, receipt_url)
-        VALUES (?, ?, ?, ?)
-        """,
-        (amount, category_id, expense_date.isoformat(), receipt_url),
-    )
-    conn.commit()
+    category_id = result.data["id"]
+    conn.table("expenses").insert(
+        {
+            "amount": amount,
+            "category_id": category_id,
+            "date": expense_date.isoformat(),
+            "receipt_url": receipt_url,
+        }
+    ).execute()
 
 
-def get_month_totals(conn: sqlite3.Connection) -> pd.DataFrame:
+def get_month_totals(conn: Client) -> pd.DataFrame:
     """Return a DataFrame with months and their total expenses."""
-    query = (
-        """
-        SELECT strftime('%Y-%m', date) AS ym, SUM(amount) AS total
-        FROM expenses
-        GROUP BY ym
-        ORDER BY ym
-        """
-    )
-    df = pd.read_sql(query, conn)
+
+    resp = conn.table("expenses").select("date, amount").execute()
+    df = pd.DataFrame(resp.data)
     if df.empty:
         return df
-    df["month"] = df["ym"].apply(
+    df["ym"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m")
+    grouped = df.groupby("ym")["amount"].sum().reset_index(name="total")
+    grouped["month"] = grouped["ym"].apply(
         lambda x: datetime.strptime(x, "%Y-%m").strftime("%b-%y")
     )
-    return df[["month", "total"]]
+    grouped.sort_values("ym", inplace=True)
+    return grouped[["month", "total"]]
 
 
-def get_expenses_by_month(conn: sqlite3.Connection, month: str) -> pd.DataFrame:
+def get_expenses_by_month(conn: Client, month: str) -> pd.DataFrame:
     """Return expenses for a given month (MMM-YY)."""
+
     if not month:
         return pd.DataFrame(columns=["date", "category", "amount"])
     start = datetime.strptime(month, "%b-%y")
     end = (start.replace(day=28) + pd.offsets.MonthEnd(1)).to_pydatetime()
-    query = (
-        """
-        SELECT e.date, c.name AS category, e.amount
-        FROM expenses e
-        JOIN categories c ON e.category_id = c.id
-        WHERE date >= ? AND date < ?
-        ORDER BY date
-        """
+    resp = (
+        conn.table("expenses")
+        .select("date, amount, categories(name)")
+        .gte("date", start.date().isoformat())
+        .lt("date", end.date().isoformat())
+        .order("date")
+        .execute()
     )
-    df = pd.read_sql(
-        query, conn, params=(start.date().isoformat(), end.date().isoformat())
-    )
-    return df
+    records = [
+        {
+            "date": r["date"],
+            "category": r.get("categories", {}).get("name"),
+            "amount": r["amount"],
+        }
+        for r in resp.data or []
+    ]
+    return pd.DataFrame(records)

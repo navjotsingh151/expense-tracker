@@ -6,18 +6,21 @@ A modular Streamlit application for tracking expenses.
 - Scrollable month tiles showing total expenses per month.
 - Dynamic bar chart grouped by expense category.
 - Add Expense form with Dropbox receipt upload.
-- SQLite database backend.
+- Supabase database backend.
 
 ## Running the App
 1. Install dependencies:
    ```bash
    pip install -r requirements.txt
    ```
-2. Start the application:
+2. Set Supabase credentials as environment variables:
+   - `SUPABASE_URL`
+   - `SUPABASE_KEY`
+
+3. Start the application:
    ```bash
    streamlit run main.py
    ```
-3. By default, data is stored in `expenses.db` in the project root.
 4. To enable Dropbox uploads, configure one of the following credential options
    in a `.env` file or as environment variables:
 

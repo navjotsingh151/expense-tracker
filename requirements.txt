@@ -4,3 +4,4 @@ altair
 dropbox
 python-dotenv
 pytest
+supabase
