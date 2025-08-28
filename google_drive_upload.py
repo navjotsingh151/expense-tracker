@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 from google.oauth2.credentials import Credentials as UserCreds
 from google.oauth2.service_account import Credentials as ServiceCreds
 from google.auth.transport.requests import Request
-from google_auth_oauthlib.flow import InstalledAppFlow
+from google_auth_oauthlib.flow import InstalledAppFlow, Flow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaIoBaseUpload
@@ -44,6 +44,7 @@ def _build_drive_service() -> Optional[Any]:
     if oauth_raw:
         _debug("DEBUG: Using OAuth client credentials")
         token_path = os.getenv("GOOGLE_OAUTH_TOKEN_JSON", "gdrive_token.json")
+        redirect_uri = os.getenv("GOOGLE_OAUTH_REDIRECT_URI")
         creds: Optional[UserCreds] = None
         if Path(token_path).exists():
             _debug(f"DEBUG: Loading OAuth token from {token_path}")
@@ -53,23 +54,63 @@ def _build_drive_service() -> Optional[Any]:
                 _debug("DEBUG: Refreshing expired OAuth token")
                 creds.refresh(Request())
             else:
+                # Build flow depending on credential type. Web application
+                # credentials require a fixed redirect URI that matches the
+                # authorized URI in Google Cloud Console (e.g.,
+                # http://localhost:8501).
                 if Path(oauth_raw).is_file():
-                    flow = InstalledAppFlow.from_client_secrets_file(oauth_raw, scopes)
+                    if redirect_uri:
+                        flow = Flow.from_client_secrets_file(
+                            oauth_raw, scopes=scopes, redirect_uri=redirect_uri
+                        )
+                    else:
+                        flow = InstalledAppFlow.from_client_secrets_file(
+                            oauth_raw, scopes
+                        )
                 else:
-                    flow = InstalledAppFlow.from_client_config(
-                        json.loads(oauth_raw), scopes
-                    )
-                try:
-                    creds = flow.run_local_server(port=0)
-                except Exception as exc:  # pragma: no cover - network/browser errors
-                    _debug(f"DEBUG: OAuth authorization failed: {exc}")
-                    st.error(
-                        "OAuth authorization failed. Ensure the OAuth client is"
-                        " configured as a Desktop app with a http://localhost"
-                        " redirect URI."
-                    )
-                    return None
-                Path(token_path).write_text(creds.to_json())
+                    if redirect_uri:
+                        flow = Flow.from_client_config(
+                            json.loads(oauth_raw), scopes=scopes, redirect_uri=redirect_uri
+                        )
+                    else:
+                        flow = InstalledAppFlow.from_client_config(
+                            json.loads(oauth_raw), scopes
+                        )
+
+                if redirect_uri:
+                    if "oauth_flow" not in st.session_state:
+                        auth_url, _ = flow.authorization_url(
+                            access_type="offline", prompt="consent"
+                        )
+                        st.session_state["oauth_flow"] = flow
+                        st.markdown(f"[Authorize Google Drive]({auth_url})")
+                        st.stop()
+                    else:
+                        flow = st.session_state["oauth_flow"]
+                        params = st.experimental_get_query_params()
+                        if "code" not in params:
+                            auth_url, _ = flow.authorization_url(
+                                access_type="offline", prompt="consent"
+                            )
+                            st.markdown(f"[Authorize Google Drive]({auth_url})")
+                            st.stop()
+                        flow.fetch_token(code=params["code"][0])
+                        creds = flow.credentials
+                        Path(token_path).write_text(creds.to_json())
+                        st.experimental_set_query_params()
+                        del st.session_state["oauth_flow"]
+                else:
+                    try:
+                        creds = flow.run_local_server(port=0)
+                    except Exception as exc:  # pragma: no cover - network/browser errors
+                        _debug(f"DEBUG: OAuth authorization failed: {exc}")
+                        st.error(
+                            "OAuth authorization failed. Set GOOGLE_OAUTH_REDIRECT_URI"
+                            " to an authorized redirect (e.g., http://localhost:8501)"
+                            " or use a desktop OAuth client.",
+                        )
+                        return None
+                    Path(token_path).write_text(creds.to_json())
         return build("drive", "v3", credentials=creds)
 
     # Fallback to service account credentials.

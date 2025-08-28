@@ -25,10 +25,10 @@ A modular Streamlit application for tracking expenses.
    - **OAuth user credentials:** set `GOOGLE_OAUTH_CLIENT_JSON` to the client
      secret JSON (or its path). A browser window will prompt for authorization
      on first run and store a token in `gdrive_token.json` (override with
-     `GOOGLE_OAUTH_TOKEN_JSON`). The OAuth client must be created as a *Desktop
-     app* in Google Cloud Console so it includes the default
-     `http://localhost` redirect URI; otherwise Google will return a
-     `redirect_uri_mismatch` error during authorization.
+     `GOOGLE_OAUTH_TOKEN_JSON`). If your OAuth client is of type *Web application*,
+     also set `GOOGLE_OAUTH_REDIRECT_URI` to one of its authorized redirect URIs
+     (for example `http://localhost:8501`). If the variable is omitted, the code
+     assumes a *Desktop* client and uses a temporary localhost redirect.
 5. Optionally, set `GOOGLE_DRIVE_FOLDER_ID` to the folder where receipts should
    be saved. The upload helper returns a shareable link that is stored alongside
    each expense.
