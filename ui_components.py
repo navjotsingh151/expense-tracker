@@ -117,6 +117,7 @@ def render_expense_table(df: pd.DataFrame) -> None:
         return
     df_display = df.copy()
     df_display["date"] = pd.to_datetime(df_display["date"]).dt.strftime("%Y-%m-%d")
+    total = df_display["amount"].sum()
     df_display.rename(
         columns=lambda c: "".join(word.capitalize() for word in c.split("_")),
         inplace=True,
@@ -134,5 +135,4 @@ def render_expense_table(df: pd.DataFrame) -> None:
     st.markdown(
         df_display.to_html(index=False, classes="expense-table"), unsafe_allow_html=True
     )
-    total = df_display["amount"].sum()
     st.markdown(f"**Total: ${total:.2f}**")
