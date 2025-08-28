@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import datetime as dt
 import re
+from pathlib import Path
 from typing import Optional
 
 import pandas as pd
@@ -92,7 +93,12 @@ def add_expense_form(conn) -> None:
                 receipt_url = None
                 if receipt is not None:
                     _debug(f"DEBUG: Uploading receipt {receipt.name}")
-                    receipt_url = dropbox_upload.upload_file(receipt, receipt.name)
+                    extension = Path(receipt.name).suffix
+                    category_part = re.sub(r"[^A-Za-z0-9]+", "_", category.strip())
+                    date_part = date.strftime("%d-%m-%Y")
+                    amount_part = f"{amount:.2f}"
+                    filename = f"{category_part}-{date_part}:{amount_part}{extension}"
+                    receipt_url = dropbox_upload.upload_file(receipt, filename)
                     _debug(f"DEBUG: Receipt URL returned: {receipt_url}")
                 db_operations.add_expense(conn, amount, category, date, receipt_url)
                 _debug("DEBUG: Expense saved to database")
@@ -111,6 +117,11 @@ def render_expense_table(df: pd.DataFrame) -> None:
         return
     df_display = df.copy()
     df_display["date"] = pd.to_datetime(df_display["date"]).dt.strftime("%Y-%m-%d")
+    total = df_display["amount"].sum()
+    df_display.rename(
+        columns=lambda c: "".join(word.capitalize() for word in c.split("_")),
+        inplace=True,
+    )
     st.markdown(
         """
         <style>
@@ -124,5 +135,4 @@ def render_expense_table(df: pd.DataFrame) -> None:
     st.markdown(
         df_display.to_html(index=False, classes="expense-table"), unsafe_allow_html=True
     )
-    total = df_display["amount"].sum()
     st.markdown(f"**Total: ${total:.2f}**")
