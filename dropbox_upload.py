@@ -21,13 +21,37 @@ def _debug(msg: str) -> None:
 
 
 def _get_client() -> Optional[dropbox.Dropbox]:
-    """Create a Dropbox client using the API token from the environment."""
+    """Create a Dropbox client from environment variables.
+
+    The helper prefers the refresh-token flow when ``DROPBOX_REFRESH_TOKEN`` and
+    app credentials are available so short-lived access tokens can be refreshed
+    automatically. As a fallback, a static ``DROPBOX_API_TOKEN`` may be used,
+    though it will eventually expire.
+    """
+
+    refresh_token = os.getenv("DROPBOX_REFRESH_TOKEN")
+    app_key = os.getenv("DROPBOX_APP_KEY")
+    app_secret = os.getenv("DROPBOX_APP_SECRET")
     token = os.getenv("DROPBOX_API_TOKEN")
-    if not token:
-        print("ERROR: Dropbox API token not provided.")
-        st.error("Dropbox API token not provided.")
-        return None
-    return dropbox.Dropbox(token)
+
+    if refresh_token and app_key and app_secret:
+        try:
+            return dropbox.Dropbox(
+                oauth2_refresh_token=refresh_token,
+                app_key=app_key,
+                app_secret=app_secret,
+            )
+        except dropbox.exceptions.AuthError as exc:
+            _debug(f"DEBUG: Failed to authenticate with refresh token: {exc}")
+            st.error("Dropbox authentication failed. Check refresh token settings.")
+            return None
+
+    if token:
+        return dropbox.Dropbox(token)
+
+    _debug("DEBUG: No Dropbox credentials provided")
+    st.error("Dropbox credentials not provided.")
+    return None
 
 
 def upload_file(file, filename: str, folder_path: Optional[str] = None) -> Optional[str]:
@@ -72,6 +96,10 @@ def upload_file(file, filename: str, folder_path: Optional[str] = None) -> Optio
                 link = None
         _debug(f"DEBUG: Shared link: {link}")
         return link
+    except dropbox.exceptions.AuthError as exc:
+        _debug(f"DEBUG: Authentication failed during upload: {exc}")
+        st.error("Dropbox authentication failed. Please reauthorize the app.")
+        return None
     except dropbox.exceptions.ApiError as exc:
         _debug(f"DEBUG: Upload failed with error: {exc}")
         print(f"ERROR: Failed to upload receipt: {exc}")
