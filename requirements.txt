@@ -1,0 +1,6 @@
+streamlit
+pandas
+altair
+dropbox
+python-dotenv
+pytest
