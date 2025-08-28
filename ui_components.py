@@ -117,6 +117,10 @@ def render_expense_table(df: pd.DataFrame) -> None:
         return
     df_display = df.copy()
     df_display["date"] = pd.to_datetime(df_display["date"]).dt.strftime("%Y-%m-%d")
+    df_display.rename(
+        columns=lambda c: "".join(word.capitalize() for word in c.split("_")),
+        inplace=True,
+    )
     st.markdown(
         """
         <style>
