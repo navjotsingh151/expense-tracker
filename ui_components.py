@@ -10,7 +10,7 @@ import pandas as pd
 import streamlit as st
 
 import db_operations
-import google_drive_upload
+import dropbox_upload
 
 
 def _debug(msg: str) -> None:
@@ -91,7 +91,7 @@ def add_expense_form(conn) -> None:
                 receipt_url = None
                 if receipt is not None:
                     _debug(f"DEBUG: Uploading receipt {receipt.name}")
-                    receipt_url = google_drive_upload.upload_file(receipt, receipt.name)
+                    receipt_url = dropbox_upload.upload_file(receipt, receipt.name)
                     _debug(f"DEBUG: Receipt URL returned: {receipt_url}")
                 db_operations.add_expense(conn, amount, category, date, receipt_url)
                 _debug("DEBUG: Expense saved to database")

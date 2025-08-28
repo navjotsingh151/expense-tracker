@@ -5,7 +5,7 @@ A modular Streamlit application for tracking expenses.
 ## Features
 - Scrollable month tiles showing total expenses per month.
 - Dynamic bar chart grouped by expense category.
-- Add Expense form with Google Drive receipt upload.
+- Add Expense form with Dropbox receipt upload.
 - SQLite database backend.
 
 ## Running the App
@@ -18,18 +18,9 @@ A modular Streamlit application for tracking expenses.
    streamlit run main.py
    ```
 3. By default, data is stored in `expenses.db` in the project root.
-4. To enable Google Drive uploads, provide credentials in one of two ways:
-   - **Service account:** set `GOOGLE_SERVICE_ACCOUNT_JSON` to the JSON string
-     or path for your service account credentials. The account must have access
-     to a Shared Drive because it has no personal storage quota.
-   - **OAuth user credentials:** set `GOOGLE_OAUTH_CLIENT_JSON` to the client
-     secret JSON (or its path). A browser window will prompt for authorization
-     on first run and store a token in `gdrive_token.json` (override with
-     `GOOGLE_OAUTH_TOKEN_JSON`). If your OAuth client is of type *Web application*,
-     also set `GOOGLE_OAUTH_REDIRECT_URI` to one of its authorized redirect URIs
-     (for example `http://localhost:8501`). If the variable is omitted, the code
-     assumes a *Desktop* client and uses a temporary localhost redirect.
-5. Optionally, set `GOOGLE_DRIVE_FOLDER_ID` to the folder where receipts should
-   be saved. The upload helper returns a shareable link that is stored alongside
-   each expense.
+4. To enable Dropbox uploads, set `DROPBOX_API_TOKEN` in a `.env` file or as an
+   environment variable. The token can be generated from the Dropbox App Console.
+5. Optionally, set `DROPBOX_FOLDER_PATH` to the folder inside your app's Dropbox
+   space where receipts should be saved. The upload helper returns a shareable
+   link that is stored alongside each expense.
 
