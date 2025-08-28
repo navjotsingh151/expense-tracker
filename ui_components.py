@@ -42,7 +42,12 @@ def render_month_tiles(conn) -> Optional[str]:
         div.month-container {min-width:110px; border:1px solid #ccc; border-radius:8px; padding:4px; margin-right:4px; box-shadow:0 2px 4px rgba(0,0,0,0.1); text-align:center;}
         div.month-container.selected {background-color:#e6f0ff; box-shadow:0 4px 6px rgba(0,0,0,0.2);}
         div.month-container .month-total {font-weight:bold; margin-bottom:4px;}
-        div.month-container button {width:100%; height:40px;}
+        div.month-container button {
+            width:100%;
+            height:40px;
+            border:none;
+            background:transparent;
+        }
         </style>
         """,
         unsafe_allow_html=True,
@@ -115,6 +120,7 @@ def render_expense_table(df: pd.DataFrame) -> None:
         return
     df_display = df.copy()
     df_display["date"] = pd.to_datetime(df_display["date"]).dt.strftime("%Y-%m-%d")
+    total = df_display["amount"].sum()
     df_display.columns = [col.title() for col in df_display.columns]
     st.markdown(
         """
@@ -129,5 +135,4 @@ def render_expense_table(df: pd.DataFrame) -> None:
     st.markdown(
         df_display.to_html(index=False, classes="expense-table"), unsafe_allow_html=True
     )
-    total = df_display["amount"].sum()
     st.markdown(f"**Total: ${total:.2f}**")
