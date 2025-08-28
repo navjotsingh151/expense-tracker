@@ -39,18 +39,22 @@ def render_month_tiles(conn) -> Optional[str]:
         """
         <style>
         div[data-testid="stHorizontalBlock"] {overflow-x: auto;}
-        div[data-testid="column"] {min-width: 110px;}
-        .month-tile button {width:100%; height:60px;}
+        div.month-container {min-width:110px; border:1px solid #ccc; border-radius:8px; padding:4px; margin-right:4px; box-shadow:0 2px 4px rgba(0,0,0,0.1);}
+        div.month-container.selected {background-color:#e6f0ff; box-shadow:0 4px 6px rgba(0,0,0,0.2);}
+        div.month-container button {width:100%; height:60px;}
         </style>
         """,
         unsafe_allow_html=True,
     )
     cols = st.columns(len(months) if months else 1)
     for i, (month, total) in enumerate(zip(months, totals)):
+        sel = "selected" if month == st.session_state["selected_month"] else ""
         with cols[i]:
+            st.markdown(f'<div class="month-container {sel}">', unsafe_allow_html=True)
             label = f"${total:.2f}\n{month}"
             if st.button(label, key=f"month_{month}"):
                 st.session_state["selected_month"] = month
+            st.markdown("</div>", unsafe_allow_html=True)
     return st.session_state.get("selected_month")
 
 
@@ -110,6 +114,7 @@ def render_expense_table(df: pd.DataFrame) -> None:
         return
     df_display = df.copy()
     df_display["date"] = pd.to_datetime(df_display["date"]).dt.strftime("%Y-%m-%d")
+    df_display.columns = [col.title() for col in df_display.columns]
     st.markdown(
         """
         <style>
