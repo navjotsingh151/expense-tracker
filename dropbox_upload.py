@@ -7,11 +7,9 @@ from typing import Optional
 
 import dropbox
 import streamlit as st
-from dotenv import load_dotenv
 
-# Load variables from a local .env if present so users do not need to export
-# them manually.
-load_dotenv()
+# Credentials are read from Streamlit's ``secrets.toml`` when running on
+# Streamlit Cloud. Environment variables act as a fallback for local use.
 
 
 def _debug(msg: str) -> None:
@@ -21,18 +19,23 @@ def _debug(msg: str) -> None:
 
 
 def _get_client() -> Optional[dropbox.Dropbox]:
-    """Create a Dropbox client from environment variables.
+    """Create a Dropbox client from configuration.
 
     The helper prefers the refresh-token flow when ``DROPBOX_REFRESH_TOKEN`` and
     app credentials are available so short-lived access tokens can be refreshed
     automatically. As a fallback, a static ``DROPBOX_API_TOKEN`` may be used,
-    though it will eventually expire.
+    though it will eventually expire. Credentials may be supplied via
+    ``st.secrets`` or environment variables.
     """
 
-    refresh_token = os.getenv("DROPBOX_REFRESH_TOKEN")
-    app_key = os.getenv("DROPBOX_APP_KEY")
-    app_secret = os.getenv("DROPBOX_APP_SECRET")
-    token = os.getenv("DROPBOX_API_TOKEN")
+    refresh_token = st.secrets.get("DROPBOX_REFRESH_TOKEN") or os.getenv(
+        "DROPBOX_REFRESH_TOKEN"
+    )
+    app_key = st.secrets.get("DROPBOX_APP_KEY") or os.getenv("DROPBOX_APP_KEY")
+    app_secret = st.secrets.get("DROPBOX_APP_SECRET") or os.getenv(
+        "DROPBOX_APP_SECRET"
+    )
+    token = st.secrets.get("DROPBOX_API_TOKEN") or os.getenv("DROPBOX_API_TOKEN")
 
     if refresh_token and app_key and app_secret:
         try:
@@ -65,7 +68,8 @@ def upload_file(file, filename: str, folder_path: Optional[str] = None) -> Optio
         Desired file name on Dropbox.
     folder_path: Optional[str]
         Destination folder path inside the app folder. If omitted, the
-        ``DROPBOX_FOLDER_PATH`` environment variable is used when available.
+        ``DROPBOX_FOLDER_PATH`` secret or environment variable is used when
+        available.
 
     Returns
     -------
@@ -78,7 +82,9 @@ def upload_file(file, filename: str, folder_path: Optional[str] = None) -> Optio
         return None
 
     if folder_path is None:
-        folder_path = os.getenv("DROPBOX_FOLDER_PATH", "")
+        folder_path = st.secrets.get("DROPBOX_FOLDER_PATH") or os.getenv(
+            "DROPBOX_FOLDER_PATH", ""
+        )
     folder_path = folder_path.strip("/")
     path = f"/{folder_path}/{filename}" if folder_path else f"/{filename}"
     _debug(f"DEBUG: Upload path: {path}")

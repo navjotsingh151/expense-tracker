@@ -13,24 +13,24 @@ A modular Streamlit application for tracking expenses.
    ```bash
    pip install -r requirements.txt
    ```
-2. Set Supabase credentials as environment variables:
-   - `SUPABASE_URL`
-   - `SUPABASE_KEY`
+2. Create a `.streamlit/secrets.toml` file with your credentials:
+   ```toml
+   SUPABASE_URL = "https://your-project.supabase.co"
+   SUPABASE_KEY = "your-supabase-key"
+
+   # Optional Dropbox settings
+   # DROPBOX_API_TOKEN = "..."
+   # DROPBOX_REFRESH_TOKEN = "..."
+   # DROPBOX_APP_KEY = "..."
+   # DROPBOX_APP_SECRET = "..."
+   # DROPBOX_FOLDER_PATH = "receipts"
+   ```
 
 3. Start the application:
    ```bash
    streamlit run main.py
    ```
-4. To enable Dropbox uploads, configure one of the following credential options
-   in a `.env` file or as environment variables:
 
-   - `DROPBOX_API_TOKEN` – a short-lived access token generated from the Dropbox
-     App Console. It will expire after a few hours.
-   - For automatic token refresh, set `DROPBOX_REFRESH_TOKEN`, `DROPBOX_APP_KEY`,
-     and `DROPBOX_APP_SECRET` obtained through the OAuth2 flow. The helper will
-     refresh the access token transparently.
-
-5. Optionally, set `DROPBOX_FOLDER_PATH` to the folder inside your app's Dropbox
-   space where receipts should be saved. The upload helper returns a shareable
-   link that is stored alongside each expense.
+The app reads credentials from Streamlit's secrets but will also fall back to
+environment variables when running locally.
 
