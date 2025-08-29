@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 from datetime import datetime, date
 from typing import List, Optional
@@ -37,13 +38,31 @@ def init_db(conn: Client) -> None:
     the tables exist.
     """
 
-    for table in ("categories", "expenses"):
+    for table in ("categories", "expenses", "users"):
         try:
             conn.table(table).select("id").limit(1).execute()
         except Exception:
             # If the table does not exist or cannot be queried, ignore the
             # error and allow Supabase to surface it later during operations.
             pass
+
+
+def validate_user(conn: Client, username: str, password: str) -> bool:
+    """Return True if the provided credentials are valid."""
+
+    password_hash = hashlib.sha256(password.encode()).hexdigest()
+    try:
+        resp = (
+            conn.table("users")
+            .select("id")
+            .eq("username", username)
+            .eq("password", password_hash)
+            .single()
+            .execute()
+        )
+        return bool(resp.data)
+    except Exception:
+        return False
 
 
 def add_category(conn: Client, name: str) -> bool:
