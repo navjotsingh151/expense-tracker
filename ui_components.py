@@ -9,6 +9,7 @@ from typing import Optional
 
 import pandas as pd
 import streamlit as st
+from supabase import Client
 
 import db_operations
 import dropbox_upload
@@ -26,6 +27,20 @@ def _rerun() -> None:
         st.rerun()
     else:  # pragma: no cover - legacy fallback
         st.experimental_rerun()
+
+
+def render_login(conn: Client) -> None:
+    """Display a login form and set session state on success."""
+
+    st.title("Login")
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+    if st.button("Login"):
+        if db_operations.validate_user(conn, username, password):
+            st.session_state["authenticated"] = True
+            _rerun()
+        else:
+            st.error("Invalid credentials")
 
 def render_month_tiles(conn) -> Optional[str]:
     """Render scrollable month tiles and return the selected month."""

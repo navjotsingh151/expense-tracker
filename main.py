@@ -36,6 +36,10 @@ def main() -> None:
     conn = db_operations.get_connection()
     db_operations.init_db(conn)
 
+    if not st.session_state.get("authenticated"):
+        ui_components.render_login(conn)
+        return
+
     # Top-right Add Expense button
     header_cols = st.columns([5, 1])
     with header_cols[1]:
