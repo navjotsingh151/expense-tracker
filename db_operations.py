@@ -8,6 +8,7 @@ from datetime import datetime, date
 from typing import List, Optional
 
 import pandas as pd
+import streamlit as st
 from supabase import Client, create_client
 
 
@@ -17,14 +18,14 @@ def get_connection(url: str | None = None, key: str | None = None) -> Client:
     Parameters
     ----------
     url: str | None
-        Supabase project URL. If not provided, the environment variable
-        ``SUPABASE_URL`` is used.
+        Supabase project URL. If not provided, the ``SUPABASE_URL`` secret or
+        environment variable is used.
     key: str | None
-        Supabase API key. If not provided, the environment variable
-        ``SUPABASE_KEY`` is used.
+        Supabase API key. If not provided, the ``SUPABASE_KEY`` secret or
+        environment variable is used.
     """
-    url = url or os.getenv("SUPABASE_URL")
-    key = key or os.getenv("SUPABASE_KEY")
+    url = url or st.secrets.get("SUPABASE_URL") or os.getenv("SUPABASE_URL")
+    key = key or st.secrets.get("SUPABASE_KEY") or os.getenv("SUPABASE_KEY")
     if not url or not key:
         raise ValueError("Supabase credentials not provided")
     return create_client(url, key)
