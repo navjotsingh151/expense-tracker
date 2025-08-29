@@ -46,27 +46,6 @@ def init_db(conn: Client) -> None:
             # error and allow Supabase to surface it later during operations.
             pass
 
-    # Ensure a default admin user exists
-    ensure_admin_user(conn)
-
-
-def ensure_admin_user(conn: Client) -> None:
-    """Create the default admin user if it does not already exist."""
-
-    username = "admin"
-    password_hash = hashlib.sha256("rayman17217251#".encode()).hexdigest()
-    try:
-        resp = (
-            conn.table("users").select("id").eq("username", username).execute()
-        )
-        if not resp.data:
-            conn.table("users").insert(
-                {"username": username, "password": password_hash}
-            ).execute()
-    except Exception:
-        # Ignore errors silently; Supabase will surface issues during ops
-        pass
-
 
 def validate_user(conn: Client, username: str, password: str) -> bool:
     """Return True if the provided credentials are valid."""
