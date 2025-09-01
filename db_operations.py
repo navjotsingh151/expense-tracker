@@ -137,7 +137,9 @@ def get_expenses_by_month(conn: Client, month: str) -> pd.DataFrame:
     if not month:
         return pd.DataFrame(columns=["date", "category", "amount"])
     start = datetime.strptime(month, "%b-%y")
-    end = (start.replace(day=28) + pd.offsets.MonthEnd(1)).to_pydatetime()
+    # Use the first day of the next month as an exclusive upper bound so
+    # expenses on the final day of the selected month are included.
+    end = (start + pd.offsets.MonthBegin(1)).to_pydatetime()
     resp = (
         conn.table("expenses")
         .select("date, amount, categories(name)")
